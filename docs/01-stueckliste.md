@@ -68,3 +68,5 @@ Unverändert: 16°-Mock, 40 mm-Leiste, 20 mm-Spalt, Wasserschlauch, Klemmen-
 | `docs/02-bauplan.md` | Aufbau mit Pi + D4004 |
 | `docs/03-anforderungen-v1.md` | Anforderungen |
 | `firmware/` | bisher ESP32-Skelett — Migration auf Pi folgt (`software/` geplant) |
+
+Foto Exploded View: `assets/exploded-v2.1-pi-d4004.png`
