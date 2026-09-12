@@ -1,175 +1,108 @@
-# Bauplan & Aufbauanleitung — PV-Clean Rain Prototyp v2
+# Bauplan & Aufbauanleitung — PV-Clean Rain Prototyp v2.1
 
-**Ziel:** Minimaler regenbasierter Dach-Crawler mit Bauch-Pad, großen weichen Rädern, ESP32, Kanten-Stopp und Software-Kantenpark.  
-**Voraussetzung:** Stückliste `docs/01-stueckliste.md`  
-**Sicherheitsregel:** Erste Tests **nur** am Boden-Mock (16°). Dach erst nach erfolgreichem Edge-Stopp, mit menschlicher Aufsicht.
+**Brain:** Raspberry Pi **2011.12** (vorrätig)  
+**Power:** GOODaaa **D4004** 25 000 mAh + Solar (vorrätig)  
+**Rest:** Minimal-Crawler (Bauch-Pad, Ø80-Räder, TB6612, 2× IR, 1× ToF)
 
 ```
-        [Zip-Beutel / Haube]
-                |
-            [ESP32]
-                |
-           [Powerbank]
-                |
-            [TB6612]
-                |
-        === Chassis-Platte ===
-           |             |
-      [Bauch-Pad]   [4× Ø80 Räder]
-           |        2× Motor (+ 2 Idler)
-      IR↓  IR↓         ToF →
+   [Solar-Klappe D4004]----lädt----[Powerbank D4004]
+                                      | Out2 5V/2.1A
+                                      v
+                               [Raspberry Pi 2011.12]
+                                      |
+                    GPIO -----------> [TB6612] --> Motoren
+                    ADC/GPIO -------> IR ↓↓
+                    I2C ------------> VL53 →
+                                      |
+                               === Chassis ===
+                          [Bauch-Pad]  [4× Softwheels]
 ```
 
 ---
 
-## 1. Werkzeug
+## 1. Stromversorgung (wichtig)
 
-- Schraubendreher, Seitenschneider, Heißkleber oder M3-Schrauben  
-- Optional: Lötkolben (Motorleitungen), Multimeter  
-- PC mit USB, PlatformIO oder Arduino-IDE (ESP32-Board-Support)
-
----
-
-## 2. Mechanik aufbauen
-
-### 2.1 Chassis
-1. Rechteckplatte ca. **200 × 150 mm** (Sperrholz 4–6 mm oder 3D-Druck).  
-2. Motoren links/rechts so montieren, dass die Antriebsräder die Platte seitlich tragen.  
-3. Zwei weitere Räder als Mitläufer (oder zweite Motorachse bei 4WD).  
-4. Schwerpunkt möglichst **mittig und tief**.
-
-### 2.2 Räder & Rahmenüberfahrt
-1. Vier weiche Räder **Ø ≥ 80 mm** festschrauben.  
-2. Prüfen: Ein **40 mm**-Hindernis (Leiste) muss bei 16° nass überfahrbar sein, ohne aufzusetzen.  
-3. **20 mm**-Spalt: Rad soll nicht stecken bleiben; ggf. Räder paarweise nebeneinander (Add-back).
-
-### 2.3 Bauch-Pad (Wischen = Fahren)
-1. Microfaser auf Schaumstoff/Filz kleben (ca. handtellergroß).  
-2. Unter der Platte so befestigen, dass leichter **Anpressdruck** auf Glas entsteht (Feder / Schaum).  
-3. **Kein** eigener Wischmotor in v1.  
-4. Pad muss austauschbar sein (Schmutz = Kratzer-Risiko).
-
-### 2.4 Elektronik-Schutz
-1. ESP32 + Treiber + Akku in Zip-Beutel oder Dose auf der Platte.  
-2. Kabelzugentlastung; Stecker nicht unter Zug setzen.  
-3. Sensoren **außerhalb** wasserdicht führen (IR nach unten, ToF nach vorne).
+1. D4004 **Output 2 (5 V / 2,1 A)** → micro-USB **POWER** am Pi (nicht Out1).  
+2. Motortreiber **VMOT**: möglichst **nicht** den Pi-5V-Pin belasten.  
+   - **Empfohlen v1:** zweiter USB-Ausgang der Powerbank (Out1) nur für TB6612+Motoren **oder** Y-Kabel von Out2 mit dicker Leitung + Elko am TB6612, Motorstrom am Pi-USB **vorbei**.  
+   - Gemeinsames **GND** zwischen Pi und TB6612 zwingend.  
+3. Solar-Klappe bei Idle ausklappen / zum Himmel — verbessert Wochen-Standby; Fahren nur aus Akku.  
+4. Brownout-Symptom am alten Pi: bunter Screen / Reboot unter Motorlast → Verkabelung prüfen, Strompfade trennen.
 
 ---
 
-## 3. Elektrik verdrahten
+## 2. Mechanik
 
-> Pinbelegung wie `firmware/include/config.h` — bei Abweichung Datei anpassen.
+Unverändert zu v2:
+1. Chassis ~200×150 mm.  
+2. 2–4 Getriebemotoren, 4× weiche Räder Ø≥80 mm.  
+3. Passives Microfaser-Bauch-Pad mit leichtem Anpressdruck.  
+4. Pi + Powerbank auf dem Chassis; Powerbank so, dass Solar-Klappe nutzbar bleibt (oder Powerbank fest, Solar bei Idle manuell/aufgestellt — für Prototyp OK).  
+5. IR nach unten an der Front, ToF nach vorne.
 
-| Signal | ESP32 (Default) | Ziel |
+**Gewicht:** D4004 + Pi sind schwerer als ESP+kleine Zelle → Traktion besser, Rahmenklettern ggf. leichter; Kanten-Risiko bleibt — Soft-Stopp muss sitzen.
+
+---
+
+## 3. Elektrik / GPIO (Pi Model B)
+
+Pi 2011.12: **3,3 V**-GPIO — TB6612-Logik 2,7–5,5 V OK; niemals 5 V in einen Pi-GPIO.
+
+| Funktion | Pi-Pin (BCM, typisch Model B) | Ziel |
 |---|---|---|
-| Motor L IN1/IN2 | GPIO 25 / 26 | TB6612 Kanal A |
-| Motor R IN1/IN2 | GPIO 27 / 14 | TB6612 Kanal B |
-| Wisch-PWM (unbenutzt v1) | GPIO 33 | — frei lassen oder LED |
-| IR Fl / Fr | GPIO 34 / 35 | TCRT5000 Analog |
-| IR Rl / Rr | GPIO 32 / 39 | optional / Reserve |
-| E-Stop-Taster | GPIO 4 → GND | INPUT_PULLUP |
-| VL53L0X | SDA/SCL (21/22 typ.) | I²C (Firmware-Erweiterung) |
-| VMOT | Akku + | TB6612 VMOT |
-| GND | gemeinsam | ESP32 + Treiber + Sensoren |
+| Motor L IN1 / IN2 | GPIO 17 / 18 | TB6612 A |
+| Motor R IN1 / IN2 | GPIO 22 / 23 | TB6612 B |
+| IR Front L / R | GPIO 27 / 24 (digital) *oder* USB-ADC später | TCRT5000 DO/AO |
+| VL53L0X | SDA/SCL (GPIO 2/3 auf späteren Boards; Model B: P1-03/05) | I²C 3,3 V |
+| E-Stop | GPIO 25 → GND | Pull-up |
+| 5 V / GND | nur Versorgung | D4004 Out2 |
+| VMOT / GND | Motorzweig | D4004 Out1 oder paralleler 5 V-Pfad |
 
-**Schritte:**
-1. Gemeinsames GND verbinden.  
-2. TB6612 Logik an 3,3 V oder 5 V (laut Modul).  
-3. Motoren an Out1/Out2.  
-4. IR-Module versorgen, Analogausgänge an ADC-Pins.  
-5. USB nur zum Flashen; Fahrbetrieb über Powerbank/Akku.
+*Pinnummern in Software-Config festhalten und am Board nach P1-Header-Belegung 2011.12 verifizieren (Rev1 vs Rev2).*
 
-**Polarität prüfen:** Kurzer Handtest `manual` vor dem Mock.
+Original-Pi hat oft **keinen** Onboard-ADC: IR besser als **Digital-Out**-Module (DO-Schwellwert am Poti) oder günstiges ADS1115 (Add-back nur wenn nötig).
 
 ---
 
-## 4. Firmware flashen
+## 4. Software (Pi statt ESP32)
+
+1. Raspberry Pi OS **Legacy Lite** auf microSD (armhf für alten Pi).  
+2. Python 3: `RPi.GPIO` oder `gpiozero`, `smbus` für VL53, optional Serial-Debug.  
+3. Zustände wie geplant: `SLEEP → WAKE_RAIN → CRAWL → AVOID → EDGE_PARK → IDLE`.  
+4. Kanten-IR: bei „unsicher“ **sofort** Motoren aus (höchste Priorität in der Loop, &lt;50 ms Ziel).  
+5. ESP32-Ordner `firmware/` bleibt als Referenz; neue Pi-Skripte unter `software/` (wird angelegt).
+
+Minimal-Start:
 
 ```bash
-cd firmware
-# PlatformIO:
-pio run -t upload
-pio device monitor -b 115200
+sudo apt update && sudo apt install -y python3-gpiozero python3-smbus i2c-tools
+# I2C im raspi-config aktivieren
+python3 software/crawl_v01.py   # nach Anlage
 ```
 
-Oder Arduino-IDE: Board „ESP32 Dev Module“, Sketch aus `src/main.cpp` + `config.h` + ArduinoJson.
-
-Serielle Kommandos (JSON, Newline):
-
-```json
-{"cmd":"ping"}
-{"cmd":"status"}
-{"cmd":"manual","drive":0.3,"turn":0,"wipe":0}
-{"cmd":"stop"}
-{"cmd":"start_row","speed":0.35}
-{"cmd":"estop"}
-{"cmd":"clear_fault"}
-```
-
-Kante ausgelöst → Modus `fault`, Motoren aus, bis `clear_fault` und Kante wieder sicher.
-
 ---
 
-## 5. Inbetriebnahme (Testzyklen)
+## 5. Testzyklen (unverändert in der Reihenfolge)
 
-### Cycle A — Rahmen & Spalt (ohne smarte Firmware)
-1. Mock 16°, nass.  
-2. Nur Antrieb (Handschalter oder `manual`).  
-3. **Pass:** 40 mm-Leiste und 20 mm-Spalt mehrmals ohne Hochsitzen.  
-4. **Fail:** größere Räder / Doppelräder / später Bogie.
-
-### Cycle B — Bauch-Pad
-1. Schmutzschlämme auf Glas/Platte.  
-2. Passiv wischen durch Fahren.  
-3. **Pass:** sichtbare Reinigungsspur.
-
-### Cycle C — Kanten-Stopp
-1. IR nach unten justieren (`EDGE_THRESHOLD` in `config.h`).  
-2. Über Dachkante (Tischkante) fahren lassen.  
-3. **Pass:** Stopp 10/10, kein Sturz.
-
-### Cycle D — Klemme ausweichen
-1. ToF nach vorne (Firmware v0.2 — Avoid-Logik ergänzen).  
-2. Klemmen-Attrappe.  
-3. **Pass:** Anhalten/Abdrehen ohne harten Aufprall.
-
-### Cycle E — Edge-Park + Idle
-1. Zustände: CRAWL → EDGE erkannt → zurücksetzen → IDLE/Sleep.  
-2. Danach erst **beaufsichtigter** Dachversuch.
-
----
-
-## 6. Dach (erst nach E)
-
-1. Roboter auf Modul setzen, Ausrichtung prüfen.  
-2. Menschliche Aufsicht (trotz „kein Tether“-Anforderung).  
-3. Bei Unsicherheit Sofort-Stopp (Taster / `estop`).  
-4. Pads nach Einsatz spülen — Grit zerkratzt AR-Glas.
-
----
-
-## 7. Justage-Tipps
-
-| Problem | Maßnahme |
+| Cycle | Ziel |
 |---|---|
-| IR löst auf Fuge aus | Schwellwert / Timeout „kurze Einzelseite = Naht“ |
-| IR löst zu spät | Sensoren weiter nach vorne / tiefer |
-| Zu wenig Traktion nass | Weichere Reifen, mehr Gewicht über Antrieb, 4WD |
-| Pad streift schlecht | Mehr Anpressdruck, frisches Tuch |
-| Akku hält keine Woche | Sleep-Strom messen; später Mini-Solar (Add-back) |
+| A | 40 mm-Rahmen + 20 mm-Spalt nass bei 16° |
+| B | Bauch-Pad reinigt sichtbar |
+| C | IR-Kantenstopp 10/10 am Mock |
+| D | ToF umfährt Klemme |
+| E | Edge-Park → IDLE; Powerbank-Solar Idle-Test |
+
+Dach erst nach E, mit Aufsicht.
 
 ---
 
-## 8. Abnahme-Checkliste Prototyp
+## 6. Abnahme-Zusatz v2.1
 
-- [ ] Cycle A bestanden  
-- [ ] Cycle B sichtbare Reinigung  
-- [ ] Cycle C kein Sturz am Mock  
-- [ ] Cycle D Klemme umfahren  
-- [ ] Edge-Park in IDLE  
-- [ ] Stückliste &lt; 200 € dokumentiert  
-- [ ] Beaufsichtigter Dachlauf geplant  
+- [ ] Pi läuft stabil an D4004 **Out2**  
+- [ ] Motoren verursachen keinen Pi-Brownout  
+- [ ] Solar-Klappe lädt Powerbank (sichtbar / Status-LEDs)  
+- [ ] Cycles A–E  
 
 ---
 
-*Bauplan folgt den Musk-Schritten 1–3 (Anforderungen → Delete → Simplify). Nicht optimieren, was die Stückliste nicht erzwingt.*
+*First principles: vorhandene Teile nutzen. Musk Step 2: kein zweites Brain/keinen Extra-Akku kaufen, solange Vorrat reicht.*

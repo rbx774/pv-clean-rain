@@ -1,77 +1,70 @@
-# Stückliste — PV-Clean Rain Prototyp v2 (minimal)
+# Stückliste — PV-Clean Rain Prototyp v2.1
 
 **Projekt:** PV-Clean Rain  
-**Zielanlage:** Röötger 20,48 kWp, 64 Module, **16°** Dachneigung (Limburg)  
-**Budget:** Teile &lt; **200 €**  
-**Stand:** 2026-09-06  
+**Zielanlage:** Röötger 20,48 kWp, 64 Module, **16°** Dachneigung  
+**Budget:** Zukaufteile &lt; **200 €** (Vorratsteile zählen nicht gegen den Cap)  
+**Stand:** 2026-09-12  
 
-Anforderungen (Kurz): regenbasierte Nassreinigung (kein Wassertank), Module selbstständig überqueren, Klemmen/Lüfter umfahren, Kanten-Parken, ~1 Woche Standby auf einer Ladung, **kein** Fangseil.
+## Vorrat (bereits vorhanden — fest eingeplant)
 
-Preise sind **Richtwerte** (DE-Shops). Vor Bestellung aktuelle Preise prüfen. Bestellung bewusst noch offen.
+| Pos. | Komponente | Spezifikation | Rolle |
+|---:|---|---|---|
+| V1 | **Raspberry Pi 2011.12** | Original Raspberry Pi Model B (Rev. um 2011/12) | Steuerrechner statt ESP32 |
+| V2 | **GOODaaa D4004** Powerbank + Solar | 25 000 mAh; In 5 V/2,1 A; Out1 5 V/1 A; Out2 **5 V/2,1 A**; LED-Lampe | Energie + Trickle über Solarzellen |
 
----
+Foto: `assets/powerbank-goodaaa-d4004.jpg`
 
-## A. Kernbauteile (empfohlen)
+### Hinweise Powerbank ↔ Pi
+- Pi **nur** an **Output 2 (5 V / 2,1 A)** betreiben (Out1 1 A ist für den Pi unter Last oft zu schwach).
+- Original-Pi hungert bei Unterspannung → kurze, dicke USB-Kabel; bei Brownouts Motorstrom vom Pi-USB **trennen** (siehe Verdrahtung).
+- Solar am D4004 lädt langsam nach — passt zu Idle/~1 Woche besser als nackte Powerbank ohne Sonne; reicht nicht zum Fahren allein.
 
-| Pos. | Komponente | Menge | Spezifikation / Hinweis | Beispiel-Bezugsquelle | ca. € |
-|---:|---|---:|---|---|---:|
-| 1 | Weiche Silikonräder | 4 | **Ø ≥ 80 mm**, Breite möglichst ≥ 17 mm; Nabe passend zum Motor | Botland DFRobot 80×17 mm | 8 |
-| 2 | Getriebemotoren TT/SJ | 2–4 | 3–6 V, Metallgetriebe bevorzugt; 2 Antrieb + 2 Mitläufer oder 4WD | Funduinoshop / Botland SJ01·SJ02 | 9–17 |
-| 3 | Motortreiber | 1 | **TB6612FNG** Dual-H-Bridge | Botland Pololu 713 | 5 |
-| 4 | Mikrocontroller | 1 | **ESP32** DevKit (CP2102) | Amazon AZ-Delivery | 7 |
-| 5 | IR-Kantensensoren | ≥2 | **TCRT5000**-Module (nach unten) | Amazon 10er-Pack | 5 |
-| 6 | ToF-Sensor | 1 | **VL53L0X** (nach vorne, Klemmen/Hindernis) | Amazon | 8 |
-| 7 | Energieversorgung | 1 | USB-Powerbank ≥10 000 mAh *oder* 2S-18650 + BMS | Amazon / Fachhandel | 15–25 |
-| 8 | Breadboard + Jumper | 1 Set | Prototyp-Verdrahtung | Amazon / Conrad | 8 |
-| 9 | Microfaser + Schaumstoff | 1 | Passiveiger **Bauch-Pad** (passiv, gefedert/geschäumt) | dm / Amazon | 5 |
-| 10 | Regensensor (analog) | 1 | optional für Wake | Amazon | 3 |
-| 11 | M3-Schrauben, Kabelbinder | 1 | Mechanik | Baumarkt | 6 |
-| 12 | Schutz | 1 | Zip-Beutel / kleines IP-Gehäuse für Elektronik | Baumarkt | 3 |
-| 13 | Chassis | 1 | Rechteckplatte 3D-Druck / Sperrholz / Acryl | Eigenbau | 5–15 |
-
-**Kernsumme (Richt):** ca. **90–120 €** + Versand + Reserve bis 200 €.
+### Hinweise Raspberry Pi 2011.12
+- Kein Onboard-WLAN → USB-WLAN-Stick oder Ethernet am Mock.
+- GPIO reicht für IR + I²C (VL53) + Ansteuerung TB6612 (PWM/Digital).
+- Soft-Echtzeit: Kanten-Stopp in Python/ C am Pi — für v1 OK; bei unsicherem Edge-Verhalten später optional Mini-MCU als Add-back (nicht jetzt kaufen).
 
 ---
 
-## B. Prüfstand / Mock (Cycle A–E)
+## A. Noch zu beschaffen (Kern)
 
-| Pos. | Teil | Menge | Zweck |
-|---:|---|---:|---|
-| M1 | Holzbrett mit **16°**-Auflage | 1 | Neigung |
-| M2 | Leiste **~40 mm** Höhe | 1 | Modulrahmen simulieren |
-| M3 | Spalt **~20 mm** | 1 | Fugenüberfahrt |
-| M4 | Wasserschlauch / Gießkanne | 1 | „Regen“ |
-| M5 | Klemmen-Attrappe | 1 | ToF-Ausweichen testen |
+| Pos. | Komponente | Menge | Spezifikation | ca. € |
+|---:|---|---:|---|---:|
+| 1 | Weiche Silikonräder | 4 | Ø ≥ 80 mm | 8 |
+| 2 | Getriebemotoren TT/SJ | 2–4 | 3–6 V | 9–17 |
+| 3 | Motortreiber **TB6612FNG** | 1 | Dual-H-Bridge, VMOT aus separatem 5–6 V-Zweig oder gleichem Akku-Pfad mit Filter | 5 |
+| 4 | IR-Kantensensoren TCRT5000 | ≥2 | nach unten | 5 |
+| 5 | VL53L0X ToF | 1 | nach vorne | 8 |
+| 6 | Microfaser + Schaum | 1 | Bauch-Pad | 5 |
+| 7 | Regensensor (analog) | 1 | optional Wake | 3 |
+| 8 | Breadboard / Jumper / Level | 1 | Pi 3,3 V-Logik beachten | 8 |
+| 9 | M3 / Kabelbinder / Chassis-Haube | 1 | | 6 |
+| 10 | Chassis | 1 | Sperrholz/3D-Druck | 5–15 |
+| 11 | USB-WLAN-Stick (falls kein LAN) | 0–1 | nur wenn Remote nötig | 8–15 |
+| 12 | microSD mit Raspberry Pi OS (Legacy/Light) | 1 | falls nicht vorhanden | 0–12 |
+
+**Zukauf-Richtwert:** weiterhin klar unter **200 €** (Pi + Powerbank = 0 € Zukauf).
 
 ---
 
-## C. Bewusst *nicht* in v1
+## B. Bewusst nicht in v1
 
-- Fangseil / Tether  
-- Deckel-Solar  
-- zweites Wisch-Aggregat / angetriebene Scheiben  
-- Bogie-Achsen (erst nach Fail von festen Rädern)  
-- Saugskirt, Kamera, Cloud, Eigen-PCB  
+- ESP32 (ersetzt durch vorhandenen Pi)  
+- Extra-Akkupack / Hot-Swap  
+- Fangseil, Saugskirt, Bogie, zweites Wischaggregat, Kamera, Cloud  
 
 ---
 
-## D. Software / Doku (dieses Repo)
+## C. Prüfstand
 
-| Inhalt | Pfad |
+Unverändert: 16°-Mock, 40 mm-Leiste, 20 mm-Spalt, Wasserschlauch, Klemmen-Attrappe.
+
+---
+
+## D. Repo-Inhalte
+
+| Pfad | Inhalt |
 |---|---|
-| Firmware-Skelett (Serial-JSON) | `firmware/` |
-| Aufbauanleitung | `docs/02-bauplan.md` |
-| Anforderungen | `docs/03-anforderungen-v1.md` |
-| Exploded View | `assets/exploded-v2-minimal.png` |
-| Konzept-Demo | `assets/pv-clean-rain-demo-v2.mp4` |
-
----
-
-## E. Kompatibilitäts-Check vor Kauf
-
-- [ ] Radnabe passt zur Motorwelle (DFRobot 80 mm ↔ TT/SJ-Flachwelle)  
-- [ ] TB6612 VMOT zur Akkuspannung (≤ 13,5 V)  
-- [ ] ESP32 3,3 V Logik ↔ TB6612 VCC 2,7–5,5 V  
-- [ ] VL53L0X an 3,3 V I²C  
-
-Wenn Räder nicht auf generische TT passen: SJ01/SJ02 laut Botland-Produktseite zum Rad kaufen.
+| `docs/02-bauplan.md` | Aufbau mit Pi + D4004 |
+| `docs/03-anforderungen-v1.md` | Anforderungen |
+| `firmware/` | bisher ESP32-Skelett — Migration auf Pi folgt (`software/` geplant) |
