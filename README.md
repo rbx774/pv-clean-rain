@@ -21,6 +21,14 @@ Minimaler, regenbasierter Reinigungsroboter für die PV-Dachanlage **Röötger (
 | [assets/powerbank-goodaaa-d4004.jpg](assets/powerbank-goodaaa-d4004.jpg) | Powerbank Foto |
 | [assets/pv-clean-rain-demo-v2.mp4](assets/pv-clean-rain-demo-v2.mp4) | Konzept-Demo |
 
+## CAD (Blender)
+
+| Datei | Inhalt |
+|---|---|
+| [cad/pv_clean_rain_v21.blend](cad/pv_clean_rain_v21.blend) | Blender-Modell |
+| [cad/pv_clean_rain_v21.glb](cad/pv_clean_rain_v21.glb) | GLB-Export |
+| [cad/pv_clean_rain_v21_preview.png](cad/pv_clean_rain_v21_preview.png) | Render-Vorschau |
+
 ## Software
 
 - `software/` — Python auf dem Pi (`crawl_v01.py`)  
