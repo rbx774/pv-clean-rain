@@ -1,56 +1,47 @@
 #!/usr/bin/env python3
-"""v0.1 — differential drive + IR edge hard-stop for PV-Clean Rain on Pi 2011.12."""
-from __future__ import annotations
+"""Test A (v0.2): 4WD drive check on the wet 16-degree mock board.
 
+Supervised bench use only - no edge logic yet.
+Starts the watchdog heartbeat (keeps TB6612 STBY high), ramps up, drives,
+ramps down. Ctrl-C or any crash stops the heartbeat -> motors unpowered.
+
+Usage: python3 crawl_v01.py [forward|backward] [seconds] [speed 0..1]
+Recommended pin factory: sudo pigpiod; export GPIOZERO_PIN_FACTORY=pigpio
+"""
+import sys
 import time
-from gpiozero import DigitalInputDevice, DigitalOutputDevice, Button
+
+from gpiozero import Motor, PWMOutputDevice
 
 import config as cfg
 
 
-class HBridgeSide:
-    def __init__(self, in1: int, in2: int):
-        self.a = DigitalOutputDevice(in1, initial_value=False)
-        self.b = DigitalOutputDevice(in2, initial_value=False)
-
-    def stop(self) -> None:
-        self.a.off()
-        self.b.off()
-
-    def forward(self) -> None:
-        self.a.on()
-        self.b.off()
-
-    def reverse(self) -> None:
-        self.a.off()
-        self.b.on()
+def ramp(left, right, target, direction, steps=20, dt=0.05):
+    for i in range(1, steps + 1):
+        s = target * i / steps
+        getattr(left, direction)(s)
+        getattr(right, direction)(s)
+        time.sleep(dt)
 
 
-def main() -> None:
-    left = HBridgeSide(cfg.MOTOR_L_IN1, cfg.MOTOR_L_IN2)
-    right = HBridgeSide(cfg.MOTOR_R_IN1, cfg.MOTOR_R_IN2)
-    # TCRT DO often HIGH = surface present — invert if your module differs
-    ir_l = DigitalInputDevice(cfg.IR_FRONT_L, pull_up=True)
-    ir_r = DigitalInputDevice(cfg.IR_FRONT_R, pull_up=True)
-    estop = Button(cfg.ESTOP_BTN, pull_up=True)
+def main():
+    direction = sys.argv[1] if len(sys.argv) > 1 else "forward"
+    seconds = float(sys.argv[2]) if len(sys.argv) > 2 else 3.0
+    speed = float(sys.argv[3]) if len(sys.argv) > 3 else 0.5
+    assert direction in ("forward", "backward")
 
-    def all_stop() -> None:
+    heartbeat = PWMOutputDevice(cfg.WD_HEARTBEAT, frequency=cfg.WD_FREQ_HZ, initial_value=0.5)
+    left = Motor(forward=cfg.L_IN1, backward=cfg.L_IN2, enable=cfg.L_PWM, pwm=True)
+    right = Motor(forward=cfg.R_IN1, backward=cfg.R_IN2, enable=cfg.R_PWM, pwm=True)
+    try:
+        time.sleep(0.2)  # let charge pump raise STBY
+        ramp(left, right, speed, direction)
+        time.sleep(seconds)
+        ramp(left, right, 0.0, direction, steps=10)
+    finally:
         left.stop()
         right.stop()
-
-    print("crawl_v01: space=forward stop on edge/estop; Ctrl+C quit")
-    try:
-        while True:
-            if estop.is_pressed or (not ir_l.value) or (not ir_r.value):
-                all_stop()
-                time.sleep(0.02)
-                continue
-            left.forward()
-            right.forward()
-            time.sleep(0.02)
-    except KeyboardInterrupt:
-        all_stop()
-        print("stopped")
+        heartbeat.off()  # STBY drops -> driver outputs off
 
 
 if __name__ == "__main__":
